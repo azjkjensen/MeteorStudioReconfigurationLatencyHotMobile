@@ -17,13 +17,27 @@ JNIEXPORT void JNICALL
         Java_com_msrs_pose_1estimation_NativeCallMethods_poseEstimateNative(JNIEnv *env, jclass type,
                                                                           jint width, jint height,
                                                                           jobject buffer, jobject dst,
-                                                                          jboolean colorFlag);
+                                                                          jboolean colorFlag, jbyteArray byteArray);
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jbyteArray JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_generateKeypointsReferenceNative(JNIEnv *env,
+                                                                                  jclass type);
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_generateDescriptorsReferenceNative(JNIEnv *env,
+                                                                                    jclass type);
+
+JNIEXPORT jbyteArray JNICALL
 Java_com_msrs_pose_1estimation_NativeCallMethods_generateReferenceImageNative(JNIEnv *env,
-                                                                             jclass type,
-                                                                             jstring path_,
-                                                                             jlong matPtr);
+                                                                             jclass type, jstring path_);
+
+JNIEXPORT void JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_setDescriptorsReferenceNative(JNIEnv *env,
+                                                                                    jclass type, jbyteArray dRef);
+
+JNIEXPORT void JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_setKeypointsReferenceNative(JNIEnv *env,
+                                                                             jclass type, jbyteArray kref);
 
 #ifdef __cplusplus
 }

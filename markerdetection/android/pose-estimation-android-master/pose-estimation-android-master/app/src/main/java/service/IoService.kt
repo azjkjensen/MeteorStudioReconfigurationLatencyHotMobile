@@ -9,6 +9,7 @@ import android.os.Process
 import android.util.Log
 import com.msrs.pose_estimation.NativeCallMethods
 import com.msrs.pose_estimation.R
+import org.opencv.core.MatOfPoint3f
 import java.io.File
 import java.io.FileOutputStream
 import java.util.*
@@ -20,6 +21,7 @@ class IoService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("IoService", "Starting service...")
+        android.os.Debug.waitForDebugger();  // this line is key
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -34,31 +36,43 @@ class IoService : Service() {
 
         override fun getPid(): Int = Process.myPid()
 
-//        fun getReferenceImage():ByteArray{
-//
-//
-//            //load the reference image
-//            try {
-//                val `is` = resources.openRawResource(R.raw.stones)
-//                val cascadeDir = getActivity().getDir("ref", Context.MODE_PRIVATE)
-//
-//                mReferenceImage = File(cascadeDir, "referenceImage.jpg")
-//                val os = FileOutputStream(mReferenceImage)
-//
-//                val buffer = ByteArray(4096)
-//                val bytesRead: Int
-//                while ((bytesRead = `is`.read(buffer)) != -1) {
-//                    os.write(buffer, 0, bytesRead)
-//                }
-//
-//                `is`.close()
-//                os.close()
-//
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//            }
-//
-//            val mat: MatOfPoint3f = NativeCallMethods.generateReferenceImage(mReferenceImage.absolutePath)
-//        }
+        override fun getReferenceImage():ByteArray{
+
+            //load the reference image
+            try {
+                val iStream = resources.openRawResource(R.raw.stones)
+                val cascadeDir = getDir("ref", Context.MODE_PRIVATE)
+
+                mReferenceImage = File(cascadeDir, "referenceImage.jpg")
+                val os = FileOutputStream(mReferenceImage)
+
+                val buffer = ByteArray(4096)
+                var bytesRead: Int = iStream.read(buffer)
+                while (bytesRead != -1) {
+                    os.write(buffer, 0, bytesRead)
+                    bytesRead = iStream.read(buffer)
+                }
+
+                iStream.close()
+                os.close()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+//            val m = MatOfPoint3f()
+            val ba:ByteArray = NativeCallMethods.generateReferenceImage(mReferenceImage.absolutePath)
+//            val ba = FloatArray((m.total() * m.elemSize()).toInt())
+//            m.get(0,0, ba)
+            return ba
+        }
+
+        override fun getKeypoints():ByteArray{
+            return NativeCallMethods.generateKeypointsReference()
+        }
+
+        override fun getDescriptors():ByteArray{
+            return NativeCallMethods.generateDescriptorsReference()
+        }
     }
 }

@@ -70,11 +70,8 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.MatOfPoint3f;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -94,6 +91,7 @@ import static android.content.Context.BIND_AUTO_CREATE;
 
 public class Camera2RawFragment extends Fragment
         implements View.OnClickListener {
+    byte[] refImageByteArray;
 
     static {
         if (!OpenCVLoader.initDebug()) {
@@ -109,6 +107,16 @@ public class Camera2RawFragment extends Fragment
             Log.d("Mainactivity", "Service connected.");
 //            IoService.IoLocalBinder ioBinder = (IoService.IoLocalBinder) service;
             ioService = IIoService.Stub.asInterface(service);
+
+            try {
+                refImageByteArray = ioService.getReferenceImage();
+                NativeCallMethods.setDescriptorsReferenceNative(ioService.getDescriptors());
+                NativeCallMethods.setKeypointsReferenceNative(ioService.getKeypoints());
+
+                Log.d("RF", String.valueOf(refImageByteArray[0]));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
@@ -391,8 +399,9 @@ public class Camera2RawFragment extends Fragment
             long stopTime;
             long totalTime;
             try{
-
-                NativeCallMethods.poseEstimate(img,mSurface,colorFlag);
+                if(refImageByteArray.length > 0) {
+                    NativeCallMethods.poseEstimate(img, mSurface, colorFlag, refImageByteArray);
+                }
                 stopTime=System.currentTimeMillis();
                 img.close();
 
@@ -493,46 +502,45 @@ public class Camera2RawFragment extends Fragment
             }
         };
 
-        //loading the reference image and extracting the feature points
-        try{
-        InputStream is = getResources().openRawResource(R.raw.stones);
-        File cascadeDir = Objects.requireNonNull(getActivity()).getDir("ref", Context.MODE_PRIVATE);
+//        //loading the reference image and extracting the feature points
+//        try{
+//        InputStream is = getResources().openRawResource(R.raw.stones);
+//        File cascadeDir = Objects.requireNonNull(getActivity()).getDir("ref", Context.MODE_PRIVATE);
+//
+//        mReferenceImage = new File(cascadeDir, "referenceImage.jpg");
+//        FileOutputStream os = new FileOutputStream(mReferenceImage);
+//
+//        byte[] buffer = new byte[4096];
+//        int bytesRead;
+//        while ((bytesRead = is.read(buffer)) != -1) {
+//            os.write(buffer, 0, bytesRead);
+//        }
+//
+//        is.close();
+//        os.close();
+//
+//    }
+//        catch (Exception e)
+//    {
+//        e.printStackTrace();
+//    }
+//
+//    MatOfPoint3f m = new MatOfPoint3f();
+//    NativeCallMethods.generateReferenceImage(mReferenceImage.getAbsolutePath(), m);
 
-        mReferenceImage = new File(cascadeDir, "referenceImage.jpg");
-        FileOutputStream os = new FileOutputStream(mReferenceImage);
 
-        byte[] buffer = new byte[4096];
-        int bytesRead;
-        while ((bytesRead = is.read(buffer)) != -1) {
-            os.write(buffer, 0, bytesRead);
-        }
+            Intent intent = new Intent(getActivity(), IoService.class);
+    //        startService(intent);
+        getActivity().bindService(intent, ioServiceConnection, BIND_AUTO_CREATE);
 
-        is.close();
-        os.close();
-
+        view.findViewById(R.id.binderButton).setOnClickListener(v ->{
+            try {
+                ((Button)v).setText(Integer.toString(ioService.getPid()));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        });
     }
-        catch (Exception e)
-    {
-        e.printStackTrace();
-    }
-
-    MatOfPoint3f m = new MatOfPoint3f();
-    NativeCallMethods.generateReferenceImage(mReferenceImage.getAbsolutePath(), m);
-
-
-
-    Intent intent = new Intent(getActivity(), IoService.class);
-//        startService(intent);
-    getActivity().bindService(intent, ioServiceConnection, BIND_AUTO_CREATE);
-
-    view.findViewById(R.id.binderButton).setOnClickListener(v ->{
-        try {
-            ((Button)v).setText(Integer.toString(ioService.getPid()));
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-    });
-}
 
     @Override
     public void onResume() {

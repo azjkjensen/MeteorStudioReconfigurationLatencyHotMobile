@@ -23,7 +23,7 @@ JNIEXPORT void JNICALL
         Java_com_msrs_pose_1estimation_NativeCallMethods_poseEstimateNative(JNIEnv *env, jclass type,
                                                                           jint srcWidth, jint srcHeight,
                                                                           jobject srcBuffer, jobject dstSurface,
-                                                                          jboolean colorFlag)
+                                                                          jboolean colorFlag, jbyteArray byteArray)
 {
 
     //acquiring the image buffer
@@ -189,6 +189,14 @@ JNIEXPORT void JNICALL
         // If too few points to compute pose, skip this image.
         if (inliers.size() >5) {
 
+            int len = env->GetArrayLength(byteArray);
+            unsigned char* buf = new unsigned char[len];
+            env->GetByteArrayRegion (byteArray, 0, len, reinterpret_cast<jbyte*>(buf));
+//            p3d = (std::vector<cv::Point3_>)buf;
+            Point3f * bf = reinterpret_cast<Point3f *>(buf);
+            p3d = *(new std::vector<cv::Point3f>(bf, bf + len));
+//            Mat((int)vec.size(), 1, traits::Type<_Tp>::value, (uchar*)&vec[0]);
+
             std::vector<cv::Point2f> p2D;
             std::vector<cv::Point3f> p3D;
             for (unsigned int i = 0; i < inliers.size(); i++) {
@@ -289,15 +297,45 @@ JNIEXPORT void JNICALL
 
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jbyteArray JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_generateKeypointsReferenceNative(JNIEnv *env,
+                                                                              jclass type) {
+    int vSize = sizeof(std::vector<cv::Point3f>) + (sizeof(Point3f) * keypointsReference.size());
+    char* bytes = new char[vSize]();
+//    memcpy(bytes, (void*) p3d.data(), vSize);
+//    env->ReleaseByteArrayElements()
+    jbyteArray out = env->NewByteArray(vSize);
+    env->SetByteArrayRegion(out, 0, vSize, (const jbyte*) keypointsReference.data());
+//    jboolean isCopy;
+//    jbyte *jbuf = env->GetCharArrayElements((jchar*)m.data, &isCopy);
+    return out;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_generateDescriptorsReferenceNative(JNIEnv *env,
+                                                                              jclass type) {
+
+    int vSize = descriptorsReference.total() * descriptorsReference.elemSize();
+    char* bytes = new char[vSize]();
+//    memcpy(bytes, (void*) p3d.data(), vSize);
+//    env->ReleaseByteArrayElements()
+    std::memcpy(bytes,descriptorsReference.data, vSize);
+    jbyteArray out = env->NewByteArray(vSize);
+    env->SetByteArrayRegion(out, 0, vSize, (const jbyte*) bytes);
+//    jboolean isCopy;
+//    jbyte *jbuf = env->GetCharArrayElements((jchar*)m.data, &isCopy);
+    return out;
+}
+
+// Need to pass back keypointsReference, descriptorsReference, and p3d.
+JNIEXPORT jbyteArray JNICALL
 Java_com_msrs_pose_1estimation_NativeCallMethods_generateReferenceImageNative(JNIEnv *env,
                                                                              jclass type,
-                                                                             jstring path_,
-                                                                             jlong matPtr) {
+                                                                             jstring path_) {
     const char *path = env->GetStringUTFChars(path_, 0);
 
     Mat referenceImage = imread(path);
-    Mat* matOut =(Mat*) matPtr;
+//    Mat* matOut =(Mat*) matPtr;
 
     Ptr<FeatureDetector> detector = ORB::create(numFeautresReference,1.2f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
 
@@ -320,7 +358,39 @@ Java_com_msrs_pose_1estimation_NativeCallMethods_generateReferenceImageNative(JN
         p3d.push_back(cv::Point3f(X, Y, Z));
     }
     env->ReleaseStringUTFChars(path_, path);
-    *matOut = Mat(p3d, true);
-    return 1;
+//    *matOut = Mat(p3d, true);
+//    Mat m = Mat(p3d, true);
+//    m.data;
+    int vSize = sizeof(std::vector<cv::Point3f>) + (sizeof(Point3f) * p3d.size());
+    char* bytes = new char[vSize]();
+//    memcpy(bytes, (void*) p3d.data(), vSize);
+//    env->ReleaseByteArrayElements()
+    jbyteArray p3d_out = env->NewByteArray(vSize);
+    env->SetByteArrayRegion(p3d_out, 0, vSize, (const jbyte*) p3d.data());
+//    jboolean isCopy;
+//    jbyte *jbuf = env->GetCharArrayElements((jchar*)m.data, &isCopy);
+    return p3d_out;
+}
+
+JNIEXPORT void JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_setDescriptorsReferenceNative(JNIEnv *env,
+                                                                               jclass type, jbyteArray dRef){
+    int len = env->GetArrayLength(dRef);
+    unsigned char* buf = new unsigned char[len];
+    env->GetByteArrayRegion(dRef, 0, len, reinterpret_cast<jbyte*>(buf));
+
+    descriptorsReference = Mat(500, 32, 0, buf, CV_AUTO_STEP);
+//    descriptorsReference.data = buf;
+}
+
+JNIEXPORT void JNICALL
+Java_com_msrs_pose_1estimation_NativeCallMethods_setKeypointsReferenceNative(JNIEnv *env,
+                                                                             jclass type, jbyteArray kRef){
+    int len = env->GetArrayLength(kRef);
+    unsigned char* buf = new unsigned char[len];
+    env->GetByteArrayRegion (kRef, 0, len, reinterpret_cast<jbyte*>(buf));
+//            p3d = (std::vector<cv::Point3_>)buf;
+    KeyPoint * bf = reinterpret_cast<KeyPoint *>(buf);
+    keypointsReference = *(new std::vector<KeyPoint>(bf, bf + len));
 }
 

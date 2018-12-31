@@ -19,7 +19,7 @@ public class NativeCallMethods {
         System.loadLibrary("opencvcamera");
     }
 
-    public static void poseEstimate(Image src, Surface dst, boolean colorFlag)
+    public static void poseEstimate(Image src, Surface dst, boolean colorFlag, byte[] ba)
     {
         if (src.getFormat() != ImageFormat.YUV_420_888) {
             throw new IllegalArgumentException("src must have format YUV_420_888.");
@@ -31,15 +31,29 @@ public class NativeCallMethods {
                     "src chroma plane must have a pixel stride of 1 or 2: got "
                             + planes[1].getPixelStride());
         }
-        poseEstimateNative(src.getWidth(), src.getHeight(), planes[0].getBuffer(),dst,false);
+        poseEstimateNative(src.getWidth(), src.getHeight(), planes[0].getBuffer(),dst,false, ba);
     }
-    public static int generateReferenceImage(String path, MatOfPoint3f mat)
+
+    public static byte[] generateKeypointsReference(){
+        return generateKeypointsReferenceNative();
+    }
+
+    public static byte[] generateDescriptorsReference(){
+        return generateDescriptorsReferenceNative();
+    }
+
+    public static byte[] generateReferenceImage(String path)
     {
-        return generateReferenceImageNative(path, mat.getNativeObjAddr());
+        return generateReferenceImageNative(path);
     }
 
     //passing the image buffer to cpp code which estimates the pose based on feature matching, find homography and pnp transform.
-    public static native void poseEstimateNative(int width, int height, ByteBuffer buffer, Surface dst, boolean colorFlag);
+    public static native void poseEstimateNative(int width, int height, ByteBuffer buffer, Surface dst,
+                                                 boolean colorFlag, byte[] ba);
+    public static native byte[] generateKeypointsReferenceNative();
+    public static native byte[] generateDescriptorsReferenceNative();
     //passing the reference image when the application starts up to extract and store keypoints. This is called only once.
-    public static native int generateReferenceImageNative(String path, long matPtr);
+    public static native byte[] generateReferenceImageNative(String path);
+    public static native void setKeypointsReferenceNative(byte[] kRef);
+    public static native void setDescriptorsReferenceNative(byte[] dRef);
 }
